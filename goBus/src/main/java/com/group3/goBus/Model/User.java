@@ -6,7 +6,7 @@ public class User {
 
     public User() {} // This default constructor is required by mongo db
     public User( String username, String password, String email, String fullname,
-                 String role, String profilePic, String phoneNumber) {
+                 String role, String phoneNumber) {
 
         this.username = username;
         this.password = password;

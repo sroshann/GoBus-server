@@ -14,7 +14,6 @@ import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/bus")
-@CrossOrigin("*")
 public class BusController {
 
     @Autowired

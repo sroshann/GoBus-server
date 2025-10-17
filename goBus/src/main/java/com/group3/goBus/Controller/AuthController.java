@@ -10,14 +10,14 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/auth")
-@CrossOrigin("*") // Allows all front end requests
+//@CrossOrigin(origins = "http://localhost:5173", allowCredentials = "true") // Allows all front end requests
 public class AuthController {
 
     @Autowired
     private UserRepository userRepository;
 
     @PostMapping("/signup")
-    public String signup(@RequestBody User user, HttpServletResponse response) {
+    public Object signup(@RequestBody User user, HttpServletResponse response) {
 
         if( userRepository.findByUsername( user.getUsername() ) != null )
             return "User name already exists!";
@@ -28,6 +28,7 @@ public class AuthController {
 
         try {
 
+            System.out.println( user.getEmail() );
             userRepository.save( user ); // Storing the data in database
             String token = JWT.generateToken( user.getUsername() ); // Creating token
 
@@ -38,7 +39,7 @@ public class AuthController {
             cookie.setMaxAge(60 * 60); // 1 hour
             response.addCookie(cookie);
 
-            return "User signed in successfully!";
+            return user;
 
         } catch( Exception error ) {
 
@@ -50,7 +51,7 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public String login( @RequestBody User user, HttpServletResponse response ) {
+    public Object login( @RequestBody User user, HttpServletResponse response ) {
 
         User existingUser =  userRepository.findByEmail( user.getEmail() );
         if( existingUser == null ) return "No such user found";
@@ -66,7 +67,7 @@ public class AuthController {
             cookie.setMaxAge(60 * 60);
             response.addCookie(cookie);
 
-            return "Login successful";
+            return existingUser;
 
         } else return "Invalid user credentials";
 
