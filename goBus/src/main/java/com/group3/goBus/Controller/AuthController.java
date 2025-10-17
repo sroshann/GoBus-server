@@ -26,18 +26,64 @@ public class AuthController {
         if( userRepository.findByPhoneNumber(user.getPhoneNumber() ) != null )
             return "Phone number already exists";
 
-        System.out.print( user );
-        userRepository.save( user ); // Storing the data in database
-        String token = JWT.generateToken( user.getUsername() ); // Creating token
+        try {
 
-        Cookie cookie = new Cookie("Token", token);
-        cookie.setHttpOnly(true); // Prevent JS access
-        cookie.setSecure(false);
-        cookie.setPath("/");
-        cookie.setMaxAge(60 * 60); // 1 hour
-        response.addCookie(cookie);
+            userRepository.save( user ); // Storing the data in database
+            String token = JWT.generateToken( user.getUsername() ); // Creating token
 
-        return "User signed in successfully!";
+            Cookie cookie = new Cookie("Token", token);
+            cookie.setHttpOnly(true); // Prevent JS access
+            cookie.setSecure(false);
+            cookie.setPath("/");
+            cookie.setMaxAge(60 * 60); // 1 hour
+            response.addCookie(cookie);
+
+            return "User signed in successfully!";
+
+        } catch( Exception error ) {
+
+            error.printStackTrace(); // Log error in console
+            return "Error occurred while signing up: " + error.getMessage();
+
+        }
+
+    }
+
+    @PostMapping("/login")
+    public String login( @RequestBody User user, HttpServletResponse response ) {
+
+        User existingUser =  userRepository.findByEmail( user.getEmail() );
+        if( existingUser == null ) return "No such user found";
+
+        if(existingUser.getPassword().equals( user.getPassword() ) ) {
+
+            String token = JWT.generateToken( existingUser.getUsername() );
+
+            Cookie cookie = new Cookie("Token", token);
+            cookie.setHttpOnly( true );
+            cookie.setSecure( false );
+            cookie.setPath("/");
+            cookie.setMaxAge(60 * 60);
+            response.addCookie(cookie);
+
+            return "Login successful";
+
+        } else return "Invalid user credentials";
+
+    }
+
+    @GetMapping("/logout")
+    public String logOut( HttpServletResponse response ) {
+
+        // Send delete instruction for the existing cookie
+        Cookie deleteCookie = new Cookie("Token", null);
+        deleteCookie.setPath("/");
+        deleteCookie.setHttpOnly(true);
+        deleteCookie.setSecure(false); // true in production
+        deleteCookie.setMaxAge(0); // expires immediately
+        response.addCookie(deleteCookie);
+
+        return "Logged out successfully!";
 
     }
 
