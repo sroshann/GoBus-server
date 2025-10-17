@@ -21,4 +21,17 @@ public class JWT {
 
     }
 
+    public static String validateToken(String jwtToken) {
+        try {
+            return Jwts.parserBuilder()
+                    .setSigningKey(token)
+                    .build()
+                    .parseClaimsJws(jwtToken)
+                    .getBody()
+                    .getSubject(); // returns username if valid
+        } catch (Exception e) {
+            return null; // invalid or expired
+        }
+    }
+
 }

@@ -2,7 +2,7 @@ package com.group3.goBus.Model;
 
 public class User {
 
-    private String id, username, password, email, fullname, role, phoneNumber;
+    private String username, password, email, fullname, role, phoneNumber;
 
     public User() {} // This default constructor is required by mongo db
     public User( String username, String password, String email, String fullname,
