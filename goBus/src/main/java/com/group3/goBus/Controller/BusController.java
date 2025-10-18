@@ -51,7 +51,7 @@ public class BusController {
     @PostMapping("/searchRoute")
     public Object getBusesByRoute(@RequestBody RouteRequest requestBody, HttpServletRequest request) {
         try {
-
+            // Extract JWT token from cookie
             String token = null;
             if (request.getCookies() != null) {
                 for (Cookie cookie : request.getCookies()) {
@@ -66,6 +66,10 @@ public class BusController {
             String username = JWT.validateToken(token);
             if (username == null) return "Unauthorized: Invalid or expired token!";
 
+            // Convert both input stops to lowercase for case-insensitive match
+            String departureStop = requestBody.getDepartureStop().trim().toLowerCase();
+            String arrivalStop = requestBody.getArrivalStop().trim().toLowerCase();
+
             List<Bus> buses = busRepository.findAll();
 
             List<Object> result = buses.stream().map(bus -> {
@@ -73,45 +77,67 @@ public class BusController {
                         int depIndex = -1;
                         int arrIndex = -1;
 
+                        // Find indexes using lowercase comparison
                         for (int i = 0; i < routes.size(); i++) {
-                            if (routes.get(i).getStop().equalsIgnoreCase(requestBody.getDepartureStop())) {
-                                depIndex = i;
-                            }
-                            if (routes.get(i).getStop().equalsIgnoreCase(requestBody.getArrivalStop())) {
-                                arrIndex = i;
-                            }
+                            String stop = routes.get(i).getStop().trim().toLowerCase();
+                            if (stop.equals(departureStop)) depIndex = i;
+                            if (stop.equals(arrivalStop)) arrIndex = i;
                         }
 
-                        if (depIndex != -1 && arrIndex != -1) {
-                            // Determine direction
-                            final boolean isReverse = depIndex > arrIndex;
-                            List<Bus.Route> segment = new ArrayList<>();
+                        // Check only forward direction (departure before arrival)
+                        if (depIndex != -1 && arrIndex != -1 && depIndex < arrIndex) {
+                            List<Bus.Route> segment = routes.subList(depIndex, arrIndex + 1);
 
-                            if (!isReverse) {
-                                segment.addAll(routes.subList(depIndex, arrIndex + 1));
-                            } else {
-                                segment.addAll(routes.subList(arrIndex, depIndex + 1));
-                                Collections.reverse(segment);
-                            }
-
-                            // Build response object
                             Map<String, Object> map = new HashMap<>();
                             map.put("busName", bus.getBusName());
                             map.put("busNumber", bus.getBusNumber());
                             map.put("status", bus.isStatus());
                             map.put("owner", bus.getOwner());
                             map.put("routeSegment", segment);
-                            map.put("reverse", isReverse);
 
                             return map;
                         }
 
                         return null;
                     })
-                    .filter(b -> b != null)
-                    .collect(Collectors.toList()); // modifiable list
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toList());
 
-            return result;
+            // If no forward route found, check for reversed route buses
+            if (result.isEmpty()) {
+                List<Object> reversed = buses.stream().map(bus -> {
+                            List<Bus.Route> routes = bus.getRoutes();
+                            int depIndex = -1;
+                            int arrIndex = -1;
+
+                            for (int i = 0; i < routes.size(); i++) {
+                                String stop = routes.get(i).getStop().trim().toLowerCase();
+                                if (stop.equals(arrivalStop)) depIndex = i;  // reverse direction
+                                if (stop.equals(departureStop)) arrIndex = i;
+                            }
+
+                            if (depIndex != -1 && arrIndex != -1 && depIndex < arrIndex) {
+                                List<Bus.Route> segment = routes.subList(depIndex, arrIndex + 1);
+
+                                Map<String, Object> map = new HashMap<>();
+                                map.put("busName", bus.getBusName());
+                                map.put("busNumber", bus.getBusNumber());
+                                map.put("status", bus.isStatus());
+                                map.put("owner", bus.getOwner());
+                                map.put("routeSegment", segment);
+
+                                return map;
+                            }
+
+                            return null;
+                        })
+                        .filter(Objects::nonNull)
+                        .collect(Collectors.toList());
+
+                if (!reversed.isEmpty()) return reversed;
+            }
+
+            return result.isEmpty() ? "No matching route found" : result;
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -146,6 +172,5 @@ public class BusController {
             return "Error fetching buses: " + e.getMessage();
         }
     }
-
 
 }
